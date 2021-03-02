@@ -217,7 +217,7 @@ open class JXPagingView: UIView {
         return !(scrollView.contentInset.top != 0 && scrollView.contentInset.top != CGFloat(pinSectionHeaderVerticalOffset))
     }
 
-    func mainTableViewMaxContentOffsetY() -> CGFloat {
+		open func mainTableViewMaxContentOffsetY() -> CGFloat {
         guard let delegate = delegate else { return 0 }
         return CGFloat(delegate.tableHeaderViewHeight(in: self)) - CGFloat(pinSectionHeaderVerticalOffset)
     }
@@ -226,14 +226,14 @@ open class JXPagingView: UIView {
         mainTableView.contentOffset = CGPoint(x: 0, y: mainTableViewMaxContentOffsetY())
     }
 
-    func minContentOffsetYInListScrollView(_ scrollView: UIScrollView) -> CGFloat {
+    open func minContentOffsetYInListScrollView(_ scrollView: UIScrollView) -> CGFloat {
         if #available(iOS 11.0, *) {
             return -scrollView.adjustedContentInset.top
         }
         return -scrollView.contentInset.top
     }
 
-    func setListScrollViewToMinContentOffsetY(_ scrollView: UIScrollView) {
+		open func setListScrollViewToMinContentOffsetY(_ scrollView: UIScrollView) {
         scrollView.contentOffset = CGPoint(x: scrollView.contentOffset.x, y: minContentOffsetYInListScrollView(scrollView))
     }
 
@@ -346,6 +346,55 @@ extension JXPagingView: UITableViewDataSource, UITableViewDelegate {
 
 extension JXPagingView: JXPagingListContainerViewDataSource {
     public func numberOfLists(in listContainerView: JXPagingListContainerView) -> Int {
+        guard let delegate = delegate else { return 0 }
+        return delegate.numberOfLists(in: self)
+    }
+
+    public func listContainerView(_ listContainerView: JXPagingListContainerView, initListAt index: Int) -> JXPagingViewListViewDelegate {
+        guard let delegate = delegate else { fatalError("JXPaingView.delegate must not be nil") }
+        var list = validListDict[index]
+        if list == nil {
+            list = delegate.pagingView(self, initListAtIndex: index)
+            list?.listViewDidScrollCallback {[weak self, weak list] (scrollView) in
+                self?.currentList = list
+                self?.listViewDidScroll(scrollView: scrollView)
+            }
+            validListDict[index] = list!
+        }
+        return list!
+    }
+
+    public func scrollViewClass(in listContainerView: JXPagingListContainerView) -> AnyClass {
+        if let any = delegate?.scrollViewClassInListContainerView?(in: self) {
+            return any
+        }
+        return UIView.self
+    }
+}
+
+extension JXPagingView: JXPagingListContainerViewDelegate {
+    public func listContainerViewWillBeginDragging(_ listContainerView: JXPagingListContainerView) {
+        mainTableView.isScrollEnabled = false
+    }
+
+    public func listContainerViewDidEndScrolling(_ listContainerView: JXPagingListContainerView) {
+        mainTableView.isScrollEnabled = true
+    }
+
+    public func listContainerView(_ listContainerView: JXPagingListContainerView, listDidAppearAt index: Int) {
+        currentScrollingListView = validListDict[index]?.listScrollView()
+        for listItem in validListDict.values {
+            if listItem === validListDict[index] {
+                listItem.listScrollView().scrollsToTop = true
+            }else {
+                listItem.listScrollView().scrollsToTop = false
+            }
+        }
+    }
+}
+
+
+public func numberOfLists(in listContainerView: JXPagingListContainerView) -> Int {
         guard let delegate = delegate else { return 0 }
         return delegate.numberOfLists(in: self)
     }
