@@ -387,6 +387,7 @@ extension JXPagingView: JXPagingListContainerViewDelegate {
             if listItem === validListDict[index] {
                 listItem.listScrollView().scrollsToTop = true
             }else {
+                setListScrollViewToMinContentOffsetY(listItem.listScrollView())
                 listItem.listScrollView().scrollsToTop = false
             }
         }
